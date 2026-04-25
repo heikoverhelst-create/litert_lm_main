@@ -1,0 +1,5 @@
+*.task
+*.litertlm
+*.litertlm.xnnpack_cache
+*.profraw
+.claude/
