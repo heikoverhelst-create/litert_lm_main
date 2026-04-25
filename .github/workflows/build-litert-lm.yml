@@ -38,14 +38,14 @@ jobs:
         run: git clone --depth=1 https://github.com/google-ai-edge/LiteRT-LM.git
 
       # ── Build ────────────────────────────────────────────────────────────────
-      - name: Build litert_lm_main
+      - name: Build litert_lm_main and litert_lm_advanced_main
         working-directory: LiteRT-LM
         shell: cmd
         run: |
           set ANDROID_HOME=
           set ANDROID_NDK_HOME=
           set ANDROID_NDK_ROOT=
-          bazelisk --output_base=C:\_bazel build //runtime/engine:litert_lm_main --config=windows
+          bazelisk --output_base=C:\_bazel build //runtime/engine:litert_lm_main //runtime/engine:litert_lm_advanced_main --config=windows
 
       # ── Package ──────────────────────────────────────────────────────────────
       - name: Collect binary + DLLs
@@ -55,6 +55,7 @@ jobs:
           # bazel-bin is a symlink into the output_base we set (C:\_bazel)
           $binDir = "LiteRT-LM\bazel-bin\runtime\engine"
           Copy-Item "$binDir\litert_lm_main.exe" dist\
+          Copy-Item "$binDir\litert_lm_advanced_main.exe" dist\
           Get-ChildItem "$binDir\*.dll" -ErrorAction SilentlyContinue |
             Copy-Item -Destination dist\
           Write-Host "Contents of dist/:"
