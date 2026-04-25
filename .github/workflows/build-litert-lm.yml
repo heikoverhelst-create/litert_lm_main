@@ -41,17 +41,22 @@ jobs:
       - name: Build litert_lm_main
         working-directory: LiteRT-LM
         shell: cmd
-        run: bazelisk build //runtime/engine:litert_lm_main --config=windows
+        run: |
+          set ANDROID_HOME=
+          set ANDROID_NDK_HOME=
+          set ANDROID_NDK_ROOT=
+          bazelisk --output_base=C:\_bazel build //runtime/engine:litert_lm_main --config=windows
 
       # ── Package ──────────────────────────────────────────────────────────────
       - name: Collect binary + DLLs
         shell: powershell
         run: |
           New-Item -ItemType Directory -Path dist | Out-Null
-          Copy-Item LiteRT-LM\bazel-bin\runtime\engine\litert_lm_main.exe dist\
-          # Grab any DLLs Bazel placed alongside the binary
-          Get-ChildItem LiteRT-LM\bazel-bin\runtime\engine\*.dll `
-            -ErrorAction SilentlyContinue | Copy-Item -Destination dist\
+          # bazel-bin is a symlink into the output_base we set (C:\_bazel)
+          $binDir = "LiteRT-LM\bazel-bin\runtime\engine"
+          Copy-Item "$binDir\litert_lm_main.exe" dist\
+          Get-ChildItem "$binDir\*.dll" -ErrorAction SilentlyContinue |
+            Copy-Item -Destination dist\
           Write-Host "Contents of dist/:"
           Get-ChildItem dist\ | Format-Table Name, Length
 
