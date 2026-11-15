@@ -33,6 +33,22 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\usr\bin"
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\mingw64\bin"
 
+      # Bazel patch_cmds run `bash -c ...`. Windows process lookup checks
+      # System32 before PATH, so the WSL launcher C:\Windows\System32\bash.exe
+      # wins over Git bash and fails silently. Remove it on this throwaway VM.
+      - name: Remove WSL bash.exe shim
+        run: |
+          foreach ($p in "C:\Windows\System32\bash.exe","C:\Windows\SysWOW64\bash.exe") {
+            if (Test-Path $p) {
+              takeown /f $p | Out-Null
+              icacls $p /grant "*S-1-5-32-544:F" | Out-Null
+              Remove-Item $p -Force
+              Write-Host "Removed $p"
+            }
+          }
+          Write-Host "bash candidates now:"; where.exe bash
+          bash -c "echo bash OK; which sed; sed --version | head -1"
+
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
