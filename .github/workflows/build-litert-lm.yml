@@ -2,6 +2,11 @@ name: Build litert_lm_main.exe
 
 on:
   workflow_dispatch:          # trigger manually from the Actions tab
+    inputs:
+      build_llm:
+        description: "Build litert_lm_main / litert_lm_advanced_main"
+        type: boolean
+        default: true
 
 defaults:
   run:
@@ -77,6 +82,7 @@ jobs:
 
       # ── Build ────────────────────────────────────────────────────────────────
       - name: Build litert_lm_main and litert_lm_advanced_main
+        if: ${{ inputs.build_llm }}
         working-directory: LiteRT-LM
         run: |
           bazelisk --output_base="$env:BAZEL_OUTPUT_BASE" build `
@@ -90,8 +96,11 @@ jobs:
         continue-on-error: true
         working-directory: LiteRT-LM
         run: |
+          # /utf-8: Kokoro G2P sources contain UTF-8 char literals (e.g. 'à');
+          # MSVC otherwise reads them in the ANSI codepage -> error C2015.
           bazelisk --output_base="$env:BAZEL_OUTPUT_BASE" build -c opt `
             --deleted_packages=swift `
+            --copt=/utf-8 --host_copt=/utf-8 `
             --action_env=TMP="$env:TMP" --action_env=TEMP="$env:TEMP" `
             //omni:omni_runner
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -101,10 +110,12 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist | Out-Null
           $binDir = "LiteRT-LM\bazel-bin\runtime\engine"
-          Copy-Item "$binDir\litert_lm_main.exe" dist\
-          Copy-Item "$binDir\litert_lm_advanced_main.exe" dist\
-          Get-ChildItem "$binDir\*.dll" -ErrorAction SilentlyContinue |
-            Copy-Item -Destination dist\
+          if (Test-Path "$binDir\litert_lm_main.exe") {
+            Copy-Item "$binDir\litert_lm_main.exe" dist\
+            Copy-Item "$binDir\litert_lm_advanced_main.exe" dist\
+            Get-ChildItem "$binDir\*.dll" -ErrorAction SilentlyContinue |
+              Copy-Item -Destination dist\
+          }
           $omniDir = "LiteRT-LM\bazel-bin\omni"
           if (Test-Path "$omniDir\omni_runner.exe") {
             Copy-Item "$omniDir\omni_runner.exe" dist\
