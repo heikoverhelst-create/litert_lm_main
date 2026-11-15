@@ -46,6 +46,19 @@ jobs:
           set ANDROID_NDK_HOME=
           set ANDROID_NDK_ROOT=
           bazelisk --output_base=C:\_bazel build //runtime/engine:litert_lm_main //runtime/engine:litert_lm_advanced_main --config=windows
+          if errorlevel 1 exit /b 1
+
+      # Separate step so a failure here doesn't hide the LLM binaries above
+      - name: Build omni_runner (TTS / ASR runner, e.g. Kokoro)
+        id: omni
+        continue-on-error: true
+        working-directory: LiteRT-LM
+        shell: cmd
+        run: |
+          set ANDROID_HOME=
+          set ANDROID_NDK_HOME=
+          set ANDROID_NDK_ROOT=
+          bazelisk --output_base=C:\_bazel build -c opt //omni:omni_runner --config=windows
 
       # ── Package ──────────────────────────────────────────────────────────────
       - name: Collect binary + DLLs
@@ -58,6 +71,14 @@ jobs:
           Copy-Item "$binDir\litert_lm_advanced_main.exe" dist\
           Get-ChildItem "$binDir\*.dll" -ErrorAction SilentlyContinue |
             Copy-Item -Destination dist\
+          $omniDir = "LiteRT-LM\bazel-bin\omni"
+          if (Test-Path "$omniDir\omni_runner.exe") {
+            Copy-Item "$omniDir\omni_runner.exe" dist\
+            Get-ChildItem "$omniDir\*.dll" -ErrorAction SilentlyContinue |
+              Copy-Item -Destination dist\ -Force
+          } else {
+            Write-Host "omni_runner.exe was not built"
+          }
           Write-Host "Contents of dist/:"
           Get-ChildItem dist\ | Format-Table Name, Length
 
